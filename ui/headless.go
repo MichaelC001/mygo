@@ -727,6 +727,12 @@ func (t *Tester) Release(x, y float32) {
 	t.send(platform.SurfaceEvent{Kind: platform.PointerUp, X: float64(x), Y: float64(y)})
 }
 
+// ReleaseWith lets go of the primary button at (x, y) with modifiers held,
+// as a drop with Option or Ctrl held to copy is.
+func (t *Tester) ReleaseWith(mods Modifiers, x, y float32) {
+	t.send(platform.SurfaceEvent{Kind: platform.PointerUp, X: float64(x), Y: float64(y), Mods: platform.Modifiers(mods)})
+}
+
 // WebViewAt returns the web view (WebView) that takes the pointer at
 // (x, y), as the window shows it: where the last frame showed it and
 // painted nothing over it that takes the pointer; nil for none.
