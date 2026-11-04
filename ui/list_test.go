@@ -1550,3 +1550,36 @@ func TestListRowShown(t *testing.T) {
 		t.Fatalf("row 1 not shown: row 1 %v, row 2 at %v", r1, r2.Y)
 	}
 }
+
+// A right-click on a row gives its list the keyboard focus, as Finder's
+// and Explorer's do: a key then acts on what the menu acted on.
+func TestRightClickFocusesList(t *testing.T) {
+	var s ListState
+	var sel Selection[int]
+	s.Selection = &sel
+	text := ""
+	var focused bool
+	tt := NewTester(func(c *Context) {
+		Column(c).Grow(1).Children(func() {
+			TextInput(c, &text).Label("Field")
+			l := List(c, &s, 6, func(i int) {
+				Text(c, "Row "+string(rune('0'+i))).ContextMenu(func(m *Menu) { m.Item("Cut") })
+			}).Grow(1)
+			focused = l.FocusWithin()
+		})
+	}, 300, 300)
+	tt.Frame()
+	tt.Click("Field")
+	tt.Frame()
+	if focused {
+		t.Fatal("the list has the focus with the field clicked")
+	}
+	if err := tt.RightClick("Row 2"); err != nil {
+		t.Fatal(err)
+	}
+	tt.CloseMenu()
+	tt.Frame()
+	if !focused {
+		t.Error("a right-click on a row leaves its list without the focus")
+	}
+}
