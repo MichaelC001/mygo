@@ -65,3 +65,21 @@ func TestMeasureTextAgain(t *testing.T) {
 		t.Errorf("measuring the same spans allocates %v times", n)
 	}
 }
+
+// Spans that all set their size measure as tall as their own text,
+// whatever the theme's font size: a small letter drawn with no element
+// sits where its size puts it, not on the theme's baseline.
+func TestRichTextSmallerThanTheTheme(t *testing.T) {
+	tt := coreNewTester(func(c *context) {}, 100, 100)
+	c := &tt.rt.c
+	_, small := c.MeasureText(0, Span{Text: "T", Size: 9, Weight: 700})
+	_, theme := c.MeasureText(0, Span{Text: "T"})
+	if small >= theme*0.85 {
+		t.Errorf("a letter of 9 measures %v high, the theme's %v", small, theme)
+	}
+	// A span leaving its size to the theme keeps the theme's line.
+	_, mixed := c.MeasureText(0, Span{Text: "T", Size: 9}, Span{Text: "x"})
+	if mixed != theme {
+		t.Errorf("with a span of the theme's size: %v high, the theme's %v", mixed, theme)
+	}
+}

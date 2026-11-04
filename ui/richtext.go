@@ -197,9 +197,19 @@ func encodeSpans(spans []Span) string {
 }
 
 // richParams returns how to lay out spans over the text style of theme t,
-// wrapping lines at width (none for 0).
+// wrapping lines at width (none for 0). Drawn with no element, the spans
+// have no style around them but the theme's, for what they leave unset:
+// spans that all set their size are laid out over that of the smallest,
+// so a line is as tall as its own text, not as the theme's, and a small
+// letter sits where its own size puts it, whatever the theme's font size.
 func (rt *engine) richParams(t *Theme, width float32, spans []Span) text.Params {
 	style := text.Style{Family: t.Font, Size: t.FontSize, Lang: rt.lang}
+	if base, ok := smallestSpan(spans); ok {
+		style.Size = base.Size
+		if base.Font != "" {
+			style.Family = base.Font
+		}
+	}
 	// Views measure the same spans frame after frame.
 	for i := range rt.measured {
 		m := &rt.measured[i]
@@ -220,6 +230,21 @@ func (rt *engine) richParams(t *Theme, width float32, spans []Span) text.Params 
 		m.spans = []Span{}
 	}
 	return p
+}
+
+// smallestSpan returns the span of the smallest size, when every span sets
+// its size.
+func smallestSpan(spans []Span) (Span, bool) {
+	var base Span
+	for i, s := range spans {
+		if s.Size <= 0 {
+			return Span{}, false
+		}
+		if i == 0 || s.Size < base.Size {
+			base = s
+		}
+	}
+	return base, len(spans) > 0
 }
 
 // measuredSpans are spans Painter.RichText or MeasureText laid out, and
