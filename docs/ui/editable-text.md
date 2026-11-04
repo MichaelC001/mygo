@@ -30,6 +30,15 @@ ui.Table(c, &app.files, cols, len(files), func(row, col int) {
 })
 ```
 
+An app that edits a row its own way (a field as wide as the name, over
+the columns beside it, as a file manager's) sets `ListState.Edit`: those
+gestures call it with the row, and the text shows no field of its own,
+not for a frame.
+
+```go
+app.files.Edit = func(row int) { app.startRename(row) }
+```
+
 ## Accessibility
 
 Assistive technology reads the text, and the text field while it is

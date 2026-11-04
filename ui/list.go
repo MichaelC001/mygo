@@ -101,6 +101,13 @@ type ListState struct {
 	// number of rows for the end. Move them there: the list shows where
 	// they would go as they are dragged, and scrolls near its edges.
 	Reorder func(rows []int, to int)
+	// Edit, when set, takes the gestures that edit a row's text in place
+	// (EditableText): F2, Enter on macOS, and a click on the text of a row
+	// already chosen once a double click is out of the question call Edit
+	// with the row, rather than show the EditableText's own input, for the
+	// app to edit the row its own way (a field as wide as the text, over
+	// the columns beside it, say), with nothing shown in between.
+	Edit func(row int)
 	// DragRows, when set, lets the user drag rows out of the list, as
 	// Element.Drag drags a value: the rows chosen, when the row dragged is
 	// one, else that row, which the list passes in order, drag the value

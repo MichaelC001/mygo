@@ -579,3 +579,46 @@ func TestTableCellMenu(t *testing.T) {
 		t.Fatalf("a menu built without items opened: %q (row %d, col %d)", m, gotRow, gotCol)
 	}
 }
+
+// With ListState.Edit, the gestures that edit a row's text call it with
+// the row, and the EditableText shows no input of its own, not for a
+// frame: the app edits the row its own way.
+func TestEditableTextListEdit(t *testing.T) {
+	names := []string{"notes.txt", "photo.jpeg"}
+	sel := -1
+	var edits []int
+	s := ListState{Selected: &sel, Edit: func(row int) { edits = append(edits, row) }}
+	inputs := 0
+	tt := coreNewTester(func(c *context) {
+		coreColumn(c).Fill().Padding(10).Children(func() {
+			coreList(c, &s, len(names), func(row int) {
+				coreEditableText(c, &names[row])
+			}).Grow(1)
+		})
+	}, 400, 300)
+	countInputs := func() {
+		for _, n := range tt.rt.states {
+			if n.editor != nil && n.seen == tt.rt.frame {
+				inputs++
+			}
+		}
+	}
+	tt.Click("photo.jpeg")
+	if runtime.GOOS == "darwin" {
+		tt.Key(0, KeyEnter)
+	} else {
+		tt.Key(0, KeyF2)
+	}
+	countInputs()
+	tt.Type("x")
+	if len(edits) != 1 || edits[0] != 1 || names[1] != "photo.jpeg" || inputs != 0 {
+		t.Fatalf("the key: edits %v, name %q, inputs %d", edits, names[1], inputs)
+	}
+	// A slow second click on the chosen row's text.
+	tt.Click("photo.jpeg")
+	tt.Advance(renameDelay + 50*time.Millisecond)
+	countInputs()
+	if len(edits) != 2 || edits[1] != 1 || inputs != 0 {
+		t.Errorf("the slow click: edits %v, inputs %d", edits, inputs)
+	}
+}

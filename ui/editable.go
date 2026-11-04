@@ -28,7 +28,8 @@ const renameDelay = 500 * time.Millisecond
 // takes none: Enter on macOS, and F2, edit the text of the row chosen,
 // while a double click on the row is Submitted; a click on the text of a
 // row already chosen edits it, once a second click would no longer make a
-// double click.
+// double click. With ListState.Edit, those call it instead, the editing
+// the app's.
 //
 //	ui.Table(c, &app.files, cols, len(app.names), func(row, col int) {
 //		if ui.EditableText(c, &app.names[row]).Changed() {
@@ -65,7 +66,13 @@ func coreEditableText(c *context, value *string) *node {
 		}
 	}
 	if start && !st.editing {
-		st.editing, st.fresh, st.draft = true, true, *value
+		if row != nil && row.f != nil && row.f.s.Edit != nil {
+			// The list's app edits it: no input of the text's own.
+			row.f.s.Edit(row.i)
+			start = false
+		} else {
+			st.editing, st.fresh, st.draft = true, true, *value
+		}
 		c.rt.consumed = true
 	}
 	if !st.editing {
