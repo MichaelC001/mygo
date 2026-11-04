@@ -304,7 +304,9 @@ func TestEditableTextInTable(t *testing.T) {
 		t.Errorf("Escape left %q", names[1])
 	}
 	// A click on the name of the row chosen edits it, once a double click
-	// is out of the question; the focus leaving keeps what was typed.
+	// is out of the question; the focus leaving keeps what was typed. A
+	// click of its own: long after the last, not the next of a run.
+	tt.Advance(time.Second)
 	tt.Click("beach.jpeg")
 	if tt.HasText("beach.jpeg") != true {
 		t.Fatal("the click edited at once")
@@ -614,7 +616,8 @@ func TestEditableTextListEdit(t *testing.T) {
 	if len(edits) != 1 || edits[0] != 1 || names[1] != "photo.jpeg" || inputs != 0 {
 		t.Fatalf("the key: edits %v, name %q, inputs %d", edits, names[1], inputs)
 	}
-	// A slow second click on the chosen row's text.
+	// A slow second click on the chosen row's text, long after the last.
+	tt.Advance(time.Second)
 	tt.Click("photo.jpeg")
 	tt.Advance(platform.DefaultDoubleClick.Time + 50*time.Millisecond)
 	countInputs()
