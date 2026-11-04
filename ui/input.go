@@ -57,6 +57,13 @@ func (rt *engine) event(ev platform.SurfaceEvent) (taken bool) {
 		rt.pointerMove(x, y)
 	case platform.PointerDown:
 		rt.pointerMove(x, y)
+		// When the press came, and how soon after it another would make a
+		// double click: what waits to tell a click from a double click
+		// (EditableText's) waits that long from the press, no more.
+		rt.pressAt, rt.doubleClick = rt.now(), ev.DoubleClickTime
+		if rt.doubleClick <= 0 {
+			rt.doubleClick = platform.DefaultDoubleClick.Time
+		}
 		rt.pointerDown(x, y, ev.Button, Modifiers(ev.Mods), ev.Clicks)
 	case platform.PointerUp:
 		rt.pointerMove(x, y)

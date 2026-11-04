@@ -14,9 +14,10 @@ type editState struct {
 	after          time.Time
 }
 
-// renameDelay is how long after a click on the text of a chosen row
-// editing starts, unless a second click makes it a double click.
-const renameDelay = 500 * time.Millisecond
+// A click on the text of a chosen row edits it once a second click would
+// no longer make a double click: the system's double-click time after the
+// press (engine.pressAt, engine.doubleClick), not a fixed wait after the
+// release, so it starts as soon as it can be no double click.
 
 // EditableText shows *value as a text that the user edits in place, as a
 // file's name in Finder: a double click on it, or Enter while it has the
@@ -54,8 +55,11 @@ func coreEditableText(c *context, value *string) *node {
 		case row.double || !row.f.chosen(row.i, row.key):
 			st.after = time.Time{}
 		case row.clicked && row.chosen && box.Hovered():
-			st.after = c.now.Add(renameDelay)
-			c.After(renameDelay)
+			st.after = c.rt.pressAt.Add(c.rt.doubleClick)
+			if st.after.Before(c.now) {
+				st.after = c.now
+			}
+			c.After(st.after.Sub(c.now))
 		case !st.after.IsZero() && !c.now.Before(st.after):
 			st.after, start = time.Time{}, true
 		}

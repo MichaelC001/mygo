@@ -676,7 +676,13 @@ func swipeBack(deltaX float64) (back, ok bool) {
 
 func (s *surface) mouse(kind platform.SurfaceEventKind, ev id, button int) {
 	x, y := s.location(ev)
-	s.send(platform.SurfaceEvent{Kind: kind, X: x, Y: y, Button: button, Clicks: sendInt(ev, "clickCount"), Mods: eventMods(ev)})
+	var dct time.Duration
+	if kind == platform.PointerDown {
+		// The double-click time the user set (System Settings'
+		// Accessibility), which clickCount follows.
+		dct = time.Duration(msgFloat(class("NSEvent"), sel("doubleClickInterval")) * float64(time.Second))
+	}
+	s.send(platform.SurfaceEvent{Kind: kind, X: x, Y: y, Button: button, Clicks: sendInt(ev, "clickCount"), DoubleClickTime: dct, Mods: eventMods(ev)})
 }
 
 // macKeys maps virtual key codes that do not type a character.

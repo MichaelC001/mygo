@@ -309,7 +309,7 @@ func TestEditableTextInTable(t *testing.T) {
 	if tt.HasText("beach.jpeg") != true {
 		t.Fatal("the click edited at once")
 	}
-	tt.Advance(renameDelay + 50*time.Millisecond)
+	tt.Advance(platform.DefaultDoubleClick.Time + 50*time.Millisecond)
 	tt.Type("sea")
 	tt.Click("notes.txt")
 	if names[1] != "sea.jpeg" || sel != 0 {
@@ -318,7 +318,7 @@ func TestEditableTextInTable(t *testing.T) {
 	// A double click opens, and does not edit.
 	tt.Click("notes.txt")
 	tt.Click("notes.txt")
-	tt.Advance(renameDelay + 50*time.Millisecond)
+	tt.Advance(platform.DefaultDoubleClick.Time + 50*time.Millisecond)
 	tt.Type("x")
 	if opened != 0 || names[0] != "notes.txt" {
 		t.Errorf("a double click: opened %d, the name %q", opened, names[0])
@@ -616,9 +616,37 @@ func TestEditableTextListEdit(t *testing.T) {
 	}
 	// A slow second click on the chosen row's text.
 	tt.Click("photo.jpeg")
-	tt.Advance(renameDelay + 50*time.Millisecond)
+	tt.Advance(platform.DefaultDoubleClick.Time + 50*time.Millisecond)
 	countInputs()
 	if len(edits) != 2 || edits[1] != 1 || inputs != 0 {
 		t.Errorf("the slow click: edits %v, inputs %d", edits, inputs)
+	}
+}
+
+// A slow click on a chosen row's text edits it as soon as it can be no
+// double click: the system's double-click time after the press, not a
+// wait as long after the release.
+func TestEditableTextEditsAtTheDoubleClickTime(t *testing.T) {
+	names := []string{"notes.txt", "photo.jpeg"}
+	sel := -1
+	var edits []int
+	s := ListState{Selected: &sel, Edit: func(row int) { edits = append(edits, row) }}
+	tt := coreNewTester(func(c *context) {
+		coreColumn(c).Fill().Padding(10).Children(func() {
+			coreList(c, &s, len(names), func(row int) {
+				coreEditableText(c, &names[row])
+			}).Grow(1)
+		})
+	}, 400, 300)
+	tt.Click("photo.jpeg")
+	tt.Advance(time.Second)
+	r, _ := tt.Find("photo.jpeg")
+	x, y := float32(r.X+10), float32(r.Y+r.H/2)
+	tt.Press(x, y)
+	tt.Advance(300 * time.Millisecond) // held a while
+	tt.Release(x, y)
+	tt.Advance(platform.DefaultDoubleClick.Time - 300*time.Millisecond + 20*time.Millisecond)
+	if len(edits) != 1 {
+		t.Errorf("past the double-click time since the press: edits %v", edits)
 	}
 }

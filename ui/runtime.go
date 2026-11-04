@@ -99,15 +99,19 @@ type engine struct {
 	inlineRects []text.Rect
 	// byPosition holds the keys whose press stood for its physical key
 	// (keyDownPhysical), until their release does the same.
-	byPosition      map[Key]bool
-	owner           weak.Pointer[engine]
-	epoch           uint64
-	parts           []any
-	public          *Context
-	arena           *elementOwner
-	handleChecks    bool
-	afterInputs     []inputAction
-	inputs          []valueInput
+	byPosition   map[Key]bool
+	owner        weak.Pointer[engine]
+	epoch        uint64
+	parts        []any
+	public       *Context
+	arena        *elementOwner
+	handleChecks bool
+	afterInputs  []inputAction
+	inputs       []valueInput
+	// pressAt is when the last press came, and doubleClick how soon after
+	// it another press makes a double click, by the system's setting.
+	pressAt         time.Time
+	doubleClick     time.Duration
 	inputAt         int
 	afterInputAt    int
 	applyingInputs  bool
