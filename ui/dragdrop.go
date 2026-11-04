@@ -111,6 +111,17 @@ func coreDragOver[T any](e *node) (T, bool) {
 	return v, ok
 }
 
+// DropShift returns how far the copy of the element dragging the value
+// dropped on e since the last frame (Drop), which followed the pointer,
+// had moved from the element as it dropped: the element's bounds moved by
+// it are where the copy showed, for an animation to go on from there.
+func coreDropShift(e *node) (Point, bool) {
+	if !e.st.hasDropped {
+		return Point{}, false
+	}
+	return e.st.dropShift, true
+}
+
 // valueTarget returns the innermost element at (x, y) taking value.
 func (rt *engine) valueTarget(x, y float32, value any) uint64 {
 	for _, id := range rt.hitChain(x, y) {
@@ -260,6 +271,12 @@ func (rt *engine) dragEnd() bool {
 		if t := rt.states[rt.valueTarget(rt.pointerX, rt.pointerY, d.value)]; t != nil {
 			t.droppedValue, t.hasDropped = d.value, true
 			t.dropX, t.dropY = rt.pointerX, rt.pointerY
+			t.dropShift = Point{}
+			if e := d.elem; e != nil && e.c != nil {
+				// As paintDrag moved the copy in the last frame.
+				px, py := e.world.Point(e.x+d.offX, e.y+d.offY)
+				t.dropShift = Point{rt.pointerX - px, rt.pointerY - py}
+			}
 		}
 	}
 	rt.requestFrame()

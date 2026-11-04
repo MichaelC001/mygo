@@ -750,6 +750,9 @@ type state struct {
 	droppedValue any
 	hasDropped   bool
 	dropX, dropY float32
+	// dropShift is how far the copy of the dragged element had moved from
+	// it as the value dropped (DropShift).
+	dropShift Point
 	dataSource   *dataSource
 	dataTarget   *transfer.DropOptions
 	dataDropped  *transfer.Drop

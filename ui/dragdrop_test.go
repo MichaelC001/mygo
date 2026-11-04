@@ -362,3 +362,29 @@ func TestGridReorder(t *testing.T) {
 		t.Errorf("moves %v", fmt.Sprint(moves))
 	}
 }
+
+func TestDropShift(t *testing.T) {
+	var shift Point
+	drops := 0
+	tt := coreNewTester(func(c *context) {
+		coreColumn(c).Gap(20).Padding(20).Children(func() {
+			coreBox(c).Size(100, 40).Label("Source").Drag("hello")
+			target := coreBox(c).Size(200, 100).Label("Target")
+			if _, ok := coreDrop[string](target); ok {
+				drops++
+				shift, _ = coreDropShift(target)
+			}
+		})
+	}, 400, 400)
+	src, _ := tt.Find("Source")
+	target, _ := tt.Find("Target")
+	// Pressed 10 in from the source's corner, dropped 15 in from the
+	// target's: the copy moved as far as the pointer.
+	drag(tt, src.X+10, src.Y+10, target.X+15, target.Y+15)
+	if drops != 1 {
+		t.Fatalf("%d drops", drops)
+	}
+	if want := (Point{target.X + 5 - src.X, target.Y + 5 - src.Y}); shift != want {
+		t.Errorf("the copy moved %v, want %v", shift, want)
+	}
+}
