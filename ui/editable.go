@@ -12,6 +12,7 @@ type editState struct {
 	editing, fresh bool
 	draft          string
 	after          time.Time
+	at             Point // where the click that will edit it pressed
 }
 
 // A click on the text of a chosen row edits it once a second click would
@@ -43,7 +44,7 @@ func coreEditableText(c *context, value *string) *node {
 	box.widget = "EditableText"
 	st := coreLocal(box, "edit", func() editState { return editState{} })
 	row := c.row
-	start := false
+	start, clicked := false, false
 	if row != nil && row.f != nil {
 		s := row.f.s
 		s.editablesNow = true
@@ -55,13 +56,14 @@ func coreEditableText(c *context, value *string) *node {
 		case row.double || !row.f.chosen(row.i, row.key):
 			st.after = time.Time{}
 		case row.clicked && row.chosen && box.Hovered():
+			st.at = c.rt.pressPoint
 			st.after = c.rt.pressAt.Add(c.rt.doubleClick)
 			if st.after.Before(c.now) {
 				st.after = c.now
 			}
 			c.After(st.after.Sub(c.now))
 		case !st.after.IsZero() && !c.now.Before(st.after):
-			st.after, start = time.Time{}, true
+			st.after, start, clicked = time.Time{}, true, true
 		}
 	} else {
 		box.Focusable()
@@ -72,7 +74,7 @@ func coreEditableText(c *context, value *string) *node {
 	if start && !st.editing {
 		if row != nil && row.f != nil && row.f.s.Edit != nil {
 			// The list's app edits it: no input of the text's own.
-			row.f.s.Edit(row.i)
+			row.f.s.Edit(ListEdit{Row: row.i, Clicked: clicked, At: st.at})
 			start = false
 		} else {
 			st.editing, st.fresh, st.draft = true, true, *value

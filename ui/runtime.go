@@ -111,6 +111,7 @@ type engine struct {
 	// pressAt is when the last press came, and doubleClick how soon after
 	// it another press makes a double click, by the system's setting.
 	pressAt         time.Time
+	pressPoint      Point // where, in window DIPs
 	doubleClick     time.Duration
 	inputAt         int
 	afterInputAt    int

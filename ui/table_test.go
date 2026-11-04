@@ -587,7 +587,7 @@ func TestEditableTextListEdit(t *testing.T) {
 	names := []string{"notes.txt", "photo.jpeg"}
 	sel := -1
 	var edits []int
-	s := ListState{Selected: &sel, Edit: func(row int) { edits = append(edits, row) }}
+	s := ListState{Selected: &sel, Edit: func(e ListEdit) { edits = append(edits, e.Row) }}
 	inputs := 0
 	tt := coreNewTester(func(c *context) {
 		coreColumn(c).Fill().Padding(10).Children(func() {
@@ -630,7 +630,7 @@ func TestEditableTextEditsAtTheDoubleClickTime(t *testing.T) {
 	names := []string{"notes.txt", "photo.jpeg"}
 	sel := -1
 	var edits []int
-	s := ListState{Selected: &sel, Edit: func(row int) { edits = append(edits, row) }}
+	s := ListState{Selected: &sel, Edit: func(e ListEdit) { edits = append(edits, e.Row) }}
 	tt := coreNewTester(func(c *context) {
 		coreColumn(c).Fill().Padding(10).Children(func() {
 			coreList(c, &s, len(names), func(row int) {
@@ -648,5 +648,38 @@ func TestEditableTextEditsAtTheDoubleClickTime(t *testing.T) {
 	tt.Advance(platform.DefaultDoubleClick.Time - 300*time.Millisecond + 20*time.Millisecond)
 	if len(edits) != 1 {
 		t.Errorf("past the double-click time since the press: edits %v", edits)
+	}
+}
+
+// ListState.Edit says whether a click asked, and where it pressed, for
+// the app's field to put its caret there; a key asks at no point.
+func TestListEditSaysWhereTheClickWas(t *testing.T) {
+	names := []string{"notes.txt", "photo.jpeg"}
+	sel := -1
+	var got []ListEdit
+	s := ListState{Selected: &sel, Edit: func(e ListEdit) { got = append(got, e) }}
+	tt := coreNewTester(func(c *context) {
+		coreColumn(c).Fill().Padding(10).Children(func() {
+			coreList(c, &s, len(names), func(row int) {
+				coreEditableText(c, &names[row])
+			}).Grow(1)
+		})
+	}, 400, 300)
+	tt.Click("photo.jpeg")
+	tt.Advance(time.Second)
+	r, _ := tt.Find("photo.jpeg")
+	x, y := float32(r.X+23), float32(r.Y+r.H/2)
+	tt.ClickAt(x, y)
+	tt.Advance(time.Second)
+	if len(got) != 1 || !got[0].Clicked || got[0].Row != 1 || got[0].At != (Point{x, y}) {
+		t.Fatalf("the click: %+v, want at %v", got, Point{x, y})
+	}
+	if runtime.GOOS == "darwin" {
+		tt.Key(0, KeyEnter)
+	} else {
+		tt.Key(0, KeyF2)
+	}
+	if len(got) != 2 || got[1].Clicked {
+		t.Errorf("the key: %+v", got)
 	}
 }
