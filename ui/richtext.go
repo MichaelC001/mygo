@@ -162,7 +162,7 @@ func (sc *spanCache) update(spans []Span) {
 	paints := false
 	for i, s := range spans {
 		end += utf8.RuneCountInString(s.Text)
-		paints = paints || s.Color.A > 0 || s.Underline || s.WavyUnderline || s.DottedUnderline || s.Strikethrough || s.Background.A > 0
+		paints = paints || s.Color != (Color{}) || s.Underline || s.WavyUnderline || s.DottedUnderline || s.Strikethrough || s.Background.A > 0
 		same = same && sc.styles[i] == spanStyle(s, end)
 	}
 	sc.paints = paints
@@ -335,9 +335,11 @@ func (sp *spanPaint) at(r int) int {
 	return lo
 }
 
-// color returns the color of span i, or c.
+// color returns the color of span i, or c for one leaving it zero: a
+// color faded to nothing is the span's own, drawing nothing, not the
+// text's around it.
 func (sp *spanPaint) color(i int, c Color) Color {
-	if i >= 0 && sp.spans[i].Color.A > 0 {
+	if i >= 0 && sp.spans[i].Color != (Color{}) {
 		return sp.spans[i].Color
 	}
 	return c

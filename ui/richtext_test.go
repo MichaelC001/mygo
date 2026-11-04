@@ -83,3 +83,20 @@ func TestRichTextSmallerThanTheTheme(t *testing.T) {
 		t.Errorf("with a span of the theme's size: %v high, the theme's %v", mixed, theme)
 	}
 }
+
+// A span's color faded to nothing draws nothing, not the theme's text.
+func TestRichTextFadedOut(t *testing.T) {
+	tt := NewTester(func(c *Context) {
+		Box(c).Size(100, 40).Background(RGB(255, 255, 255)).Draw(func(p *Painter, r Rect) {
+			p.RichText(r.X+4, r.Y+4, 0, Span{Text: "MMMM", Size: 20, Color: RGB(255, 0, 0).Alpha(0)})
+		})
+	}, 100, 40)
+	img := tt.Image()
+	for y := range 40 {
+		for x := range 100 {
+			if c := img.RGBAAt(x, y); c.R < 250 || c.G < 250 || c.B < 250 {
+				t.Fatalf("at (%d, %d): %v, drawn faded to nothing", x, y, c)
+			}
+		}
+	}
+}
