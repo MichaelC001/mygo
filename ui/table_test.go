@@ -722,3 +722,45 @@ func TestListToggles(t *testing.T) {
 		t.Errorf("past the box: %v", slices.Collect(chosen.All()))
 	}
 }
+
+// A fast double click on a row's text opens the row and edits nothing,
+// chosen before or not: the release of its second press is no click
+// asking to edit, as in Finder and Explorer.
+func TestEditableTextFastDoubleClickEditsNothing(t *testing.T) {
+	for _, chosenFirst := range []bool{true, false} {
+		names := []string{"notes.txt", "book.xlsx"}
+		sel := -1
+		var chosen Selection[string]
+		var edits []int
+		submits := 0
+		s := ListState{Selected: &sel, Selection: &chosen, Key: func(i int) any { return names[i] },
+			Edit: func(e ListEdit) { edits = append(edits, e.Row) }}
+		tt := coreNewTester(func(c *context) {
+			coreColumn(c).Fill().Padding(10).Children(func() {
+				l := coreList(c, &s, len(names), func(row int) {
+					coreEditableText(c, &names[row])
+				}).Grow(1)
+				if l.Submitted() {
+					submits++
+				}
+			})
+		}, 400, 300)
+		if chosenFirst {
+			tt.Click("book.xlsx")
+			tt.Advance(time.Second)
+		}
+		r, _ := tt.Find("book.xlsx")
+		x, y := float32(r.X+10), float32(r.Y+r.H/2)
+		tt.Press(x, y)
+		tt.Advance(60 * time.Millisecond)
+		tt.Release(x, y)
+		tt.Advance(80 * time.Millisecond)
+		tt.Press(x, y)
+		tt.Advance(60 * time.Millisecond)
+		tt.Release(x, y)
+		tt.Advance(2 * time.Second)
+		if submits != 1 || len(edits) != 0 {
+			t.Errorf("chosen first %v: opened %d times, edits %v", chosenFirst, submits, edits)
+		}
+	}
+}

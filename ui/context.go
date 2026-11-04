@@ -658,6 +658,9 @@ type state struct {
 	webView NativeWebView
 
 	clicks, rightClicks, doubleClicks int
+	// pressRun is which press of a run its last press was: 1 a press on
+	// its own, 2 the second of a double click, and so on.
+	pressRun int
 	// pressMods are the modifiers held as the pointer went down on the
 	// element, and clickMods those of its last click.
 	pressMods, clickMods Modifiers

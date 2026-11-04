@@ -720,7 +720,9 @@ func (f *listFrame) build(i int) *node {
 		d.on, w.st.clicks, w.st.doubleClicks = false, 0, 0
 	}
 	prev := f.rb
-	f.rb = rowBuild{f: f, i: i, key: key, clicked: w.st.clicks > 0 && w.st.clickMods == 0, double: w.st.doubleClicks > 0}
+	// A click is one on its own: the release of a double click's second
+	// press, which opens the row, is none.
+	f.rb = rowBuild{f: f, i: i, key: key, clicked: w.st.clicks > 0 && w.st.clickMods == 0 && w.st.pressRun <= 1, double: w.st.doubleClicks > 0}
 	rb := &f.rb
 	if sel := s.cursor(); sel != nil && !f.isHeader(i) {
 		t := c.theme
