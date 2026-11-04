@@ -109,6 +109,13 @@ type ListState struct {
 	// field as wide as the text, over the columns beside it, its caret
 	// where the click was, say), with nothing shown in between.
 	Edit func(ListEdit)
+	// Toggles, with Selection, makes a click on a row choose it or take it
+	// out of the choice, as a Cmd-click (Ctrl-click on Linux and Windows)
+	// does, for a while of checking rows with no key held. Shift still
+	// extends. ToggleAt, when set, does so for a click at the window's
+	// point (x, y) on row it reports true for: one on the row's check box.
+	Toggles  bool
+	ToggleAt func(row int, x, y float32) bool
 	// DragRows, when set, lets the user drag rows out of the list, as
 	// Element.Drag drags a value: the rows chosen, when the row dragged is
 	// one, else that row, which the list passes in order, drag the value
