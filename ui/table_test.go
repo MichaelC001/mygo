@@ -767,3 +767,55 @@ func TestEditableTextFastDoubleClickEditsNothing(t *testing.T) {
 		}
 	}
 }
+
+// As in Double Commander, a press on a chosen row's text held past the
+// double-click time edits nothing, nor does a click whose pointer left
+// the text before that time came.
+func TestEditableTextHeldOrLeftEditsNothing(t *testing.T) {
+	names := []string{"notes.txt", "photo.jpeg"}
+	sel := -1
+	var edits []int
+	s := ListState{Selected: &sel, Edit: func(e ListEdit) { edits = append(edits, e.Row) }}
+	tt := coreNewTester(func(c *context) {
+		coreColumn(c).Fill().Padding(10).Children(func() {
+			coreList(c, &s, len(names), func(row int) {
+				coreEditableText(c, &names[row])
+			}).Grow(1)
+		})
+	}, 400, 300)
+	tt.Click("photo.jpeg")
+	tt.Advance(time.Second)
+	r, _ := tt.Find("photo.jpeg")
+	x, y := float32(r.X+10), float32(r.Y+r.H/2)
+	tt.Press(x, y)
+	tt.Advance(platform.DefaultDoubleClick.Time + 100*time.Millisecond) // held
+	tt.Release(x, y)
+	tt.Advance(time.Second)
+	if len(edits) != 0 {
+		t.Errorf("a press held past the double-click time: edits %v", edits)
+	}
+	tt.ClickAt(x, y)
+	tt.Move(x, y+150) // away, below the rows
+	tt.Advance(time.Second)
+	if len(edits) != 0 {
+		t.Errorf("the pointer gone from the text: edits %v", edits)
+	}
+	tt.Move(x, y)
+	tt.ClickAt(x, y)
+	tt.Advance(time.Second)
+	if len(edits) != 1 {
+		t.Errorf("a slow click staying on the text: edits %v", edits)
+	}
+	// The pointer moving on the text as it waits, frames coming between:
+	// it edits on time all the same.
+	tt.Advance(time.Second)
+	tt.ClickAt(x, y)
+	for range 5 {
+		tt.Advance(40 * time.Millisecond)
+		tt.Move(x+1, y)
+	}
+	tt.Advance(platform.DefaultDoubleClick.Time)
+	if len(edits) != 2 {
+		t.Errorf("frames coming as it waited: edits %v", edits)
+	}
+}

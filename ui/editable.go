@@ -18,7 +18,9 @@ type editState struct {
 // A click on the text of a chosen row edits it once a second click would
 // no longer make a double click: the system's double-click time after the
 // press (engine.pressAt, engine.doubleClick), not a fixed wait after the
-// release, so it starts as soon as it can be no double click.
+// release, so it starts as soon as it can be no double click. As in Double
+// Commander, a press held past that time is no such click, and the
+// pointer gone from the text by then edits nothing.
 
 // EditableText shows *value as a text that the user edits in place, as a
 // file's name in Finder: a double click on it, or Enter while it has the
@@ -59,11 +61,17 @@ func coreEditableText(c *context, value *string) *node {
 			st.at = c.rt.pressPoint
 			st.after = c.rt.pressAt.Add(c.rt.doubleClick)
 			if st.after.Before(c.now) {
-				st.after = c.now
+				st.after = time.Time{} // held past it: no click to edit
+				break
 			}
 			c.After(st.after.Sub(c.now))
 		case !st.after.IsZero() && !c.now.Before(st.after):
-			st.after, start, clicked = time.Time{}, true, true
+			st.after = time.Time{}
+			start, clicked = box.Hovered(), box.Hovered()
+		case !st.after.IsZero():
+			// Still to come: a frame arms only the timers it asks for, and
+			// frames come between, as the pointer moves.
+			c.After(st.after.Sub(c.now))
 		}
 	} else {
 		box.Focusable()
