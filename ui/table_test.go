@@ -80,8 +80,9 @@ func TestTableResize(t *testing.T) {
 		t.Fatalf("dragged 30 DIPs wider: %v, the header %v", w, h)
 	}
 	// The column before it, sharing the room left, kept its width, for the
-	// edge to follow the pointer.
-	if w := s.Columns.Widths["Name"]; w != 300 {
+	// edge to follow the pointer: the table's, less the others' and the
+	// scroll bar's room after them.
+	if w := s.Columns.Widths["Name"]; w != 300-tt.rt.c.theme.ScrollbarRoom() {
 		t.Errorf("Name took %v", w)
 	}
 	edge += 30
