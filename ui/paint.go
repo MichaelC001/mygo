@@ -1243,7 +1243,7 @@ func scrollBars(box Rect, inset [4]float32, w, h, x, y float32, flags uint32, wi
 	top, right, bottom, left := inset[0], inset[1], inset[2], inset[3]
 	if g.vertical {
 		track := max(box.H-top-bottom-corner, 0)
-		g.vTrack = Rect{box.X + box.W - right - width - 6, box.Y + top, width + 6, track}
+		g.vTrack = Rect{box.X + box.W - right - width - 6, box.Y + top, width + 6, track} // ScrollbarRoom
 		t := scrollThumb(box.Y+top, track, box.H, h, y)
 		g.v = Rect{box.X + box.W - right - width - 3, t.Y, width, t.H}
 		if rtl {

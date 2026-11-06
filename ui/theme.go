@@ -133,6 +133,12 @@ func (t *Theme) scrollbarWidth() float32 {
 	return t.ScrollbarWidth
 }
 
+// ScrollbarRoom is how far in from its side a scroll container's bar
+// reaches, over its content: its track, the bar and the room around it.
+// Content kept clear of it never runs under the bar, as a Table's last
+// column is, and a header drawn by the app above one lines up with it.
+func (t *Theme) ScrollbarRoom() float32 { return t.scrollbarWidth() + 6 }
+
 // tooltipDelay returns how long the pointer rests on an element before its
 // tip shows (TooltipDelay), and how soon after a tip goes the next one
 // shows at once.

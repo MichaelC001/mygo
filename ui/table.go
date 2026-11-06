@@ -211,6 +211,13 @@ func table(c *context, s *ListState, columns []TableColumn, n int, cell func(row
 			// Keyed by its column, a cell keeps its state as the columns
 			// move: a header being dragged keeps the press.
 			box := coreRow(c).Key(col.id()).Padding(t.Space(1.5), t.Space(2.5)).AlignItems(Center).Shrink(0).Clip().Role(role)
+			if k == len(order)-1 {
+				// The last column's text clear of the rows' scroll bar,
+				// which lies over them at their side, there or not: the
+				// columns stay where they are as it comes and goes.
+				pad := t.Space(2.5)
+				box.Padding(t.Space(1.5), pad+t.ScrollbarRoom(), t.Space(1.5), pad)
+			}
 			if w, ok := layout.width(col); ok {
 				box.Width(w)
 			} else {
