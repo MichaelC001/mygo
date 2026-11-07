@@ -18,3 +18,22 @@ func (e *node) RowDoubleClicked() bool {
 	row := e.c.row
 	return row != nil && row.double && e.Hovered()
 }
+
+// RowPressed reports, while a row of a List or a Table builds, that the
+// row is being pressed with the pointer: a cell can show it heard the press
+// and leave the press to the row, which chooses, where Pressed would take
+// it. Dragged off the row, it is pressed no more.
+//
+//	ui.Table(c, &app.list, cols, len(app.rows), func(row, col int) {
+//		cell := ui.Box(c).FillWidth().Children(func() { ui.Text(c, app.rows[row][col]) })
+//		if cell.RowPressed() {
+//			cell.Opacity(0.8)
+//		}
+//	})
+func (e *node) RowPressed() bool {
+	if !e.hasState() {
+		return false
+	}
+	row := e.c.row
+	return row != nil && row.pressed
+}

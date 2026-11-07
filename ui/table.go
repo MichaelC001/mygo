@@ -317,7 +317,7 @@ func table(c *context, s *ListState, columns []TableColumn, n int, cell func(row
 					row.Radius(t.Radius)
 				}
 				row.styleFn = func(row *node) {
-					if row.Hovered() {
+					if row.Hovered() && !row.c.rt.rowHoverHeld() {
 						row.bg = t.SurfaceHover
 					}
 				}

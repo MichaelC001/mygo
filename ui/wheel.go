@@ -107,6 +107,7 @@ func (rt *engine) glideWheels(now time.Time) {
 			s.wheel = nil
 			continue
 		}
+		rt.holdRowHover() // moving yet: the hold counts from where it stops
 		rt.animating = true
 		kept = append(kept, id)
 	}

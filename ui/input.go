@@ -203,6 +203,37 @@ func (rt *engine) watchHover(chain []uint64) bool {
 	return false
 }
 
+// holdRowHover keeps the rows of lists from showing the pointer over them,
+// as content scrolled under it: what hovers is found once a frame has laid
+// out, so each frame of a scroll would draw the row that was under the
+// pointer a frame ago, as far from it as the frame scrolled. As browsers
+// do, nothing shows until scrolling has stopped for a moment, or the
+// pointer moves off on its own.
+func (rt *engine) holdRowHover() {
+	if !rt.rowHoverHeld() {
+		rt.rowHoverFromX, rt.rowHoverFromY = rt.pointerX, rt.pointerY
+	}
+	rt.rowHoverUntil = rt.now().Add(rowHoverHold)
+}
+
+// rowHoverHeld reports whether rows show no hover (holdRowHover).
+func (rt *engine) rowHoverHeld() bool {
+	return !rt.rowHoverUntil.IsZero() && rt.now().Before(rt.rowHoverUntil)
+}
+
+// endRowHoverHold ends the hold once the pointer has moved past a hand's
+// tremble on the wheel.
+func (rt *engine) endRowHoverHold(x, y float32) {
+	if !rt.rowHoverHeld() {
+		return
+	}
+	dx, dy := x-rt.rowHoverFromX, y-rt.rowHoverFromY
+	if dx*dx+dy*dy >= rowHoverMove*rowHoverMove {
+		rt.rowHoverUntil = time.Time{}
+		rt.requestFrame()
+	}
+}
+
 // rehover makes the elements under the pointer hover after a frame built
 // and laid them out anew, as the row taking the place of one removed: a
 // pointer standing still sends no event that would. It asks for the frame
@@ -266,6 +297,7 @@ func (rt *engine) pointerMove(x, y float32) {
 	}
 	moved := x != rt.pointerX || y != rt.pointerY
 	rt.pointerX, rt.pointerY, rt.pointerIn = x, y, true
+	rt.endRowHoverHold(x, y)
 	if rt.selection.dragging && rt.pressed != nil {
 		rt.moveTextSelection(x, y)
 	}
@@ -601,6 +633,7 @@ func (rt *engine) scroll(dx, dy float32, mods Modifiers, precise, momentum bool)
 		}
 		if glide {
 			if wheelMoves(s, sx, sy) {
+				rt.holdRowHover()
 				rt.wheelScroll(s, sx, sy)
 				return
 			}
@@ -608,6 +641,7 @@ func (rt *engine) scroll(dx, dy float32, mods Modifiers, precise, momentum bool)
 		}
 		s.wheel = nil
 		if scrollBy(s, sx, sy) {
+			rt.holdRowHover()
 			rt.requestFrame()
 			return
 		}
@@ -1335,6 +1369,15 @@ func (rt *engine) pressMove(x0, y0, x1, y1 float32) {
 	}
 }
 
+// pressedHere reports whether the pointer is pressing the element and is
+// over it, asking for nothing.
+func (e *node) pressedHere() bool {
+	s := e.st
+	rt := e.c.rt
+	x, y := s.pointer(rt)
+	return s.pressed && rt.contains(s, Rect{s.x, s.y, s.w, s.h}, x, y)
+}
+
 // Pressed reports whether the element is being pressed with the pointer,
 // unless it is disabled.
 func (e *node) Pressed() bool {
@@ -1343,11 +1386,10 @@ func (e *node) Pressed() bool {
 	}
 	e.flags |= flagClickable | flagHover
 	s := e.st
-	rt := e.c.rt
-	x, y := s.pointer(rt)
-	if !s.pressed || e.disabled() || !rt.contains(s, Rect{s.x, s.y, s.w, s.h}, x, y) {
+	if e.disabled() || !e.pressedHere() {
 		return false
 	}
+	rt := e.c.rt
 	if s.pressPending {
 		// A press may choose a row after the view built its selection and
 		// focus colors. Show that choice in this frame, as for a click,

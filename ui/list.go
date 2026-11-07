@@ -451,6 +451,7 @@ type rowBuild struct {
 	i                       int
 	key                     any
 	clicked, chosen, double bool
+	pressed                 bool // the pointer is pressing the row (RowPressed)
 }
 
 // List creates a vertical scroll container of n rows, built with row(i),
@@ -722,7 +723,7 @@ func (f *listFrame) build(i int) *node {
 	prev := f.rb
 	// A click is one on its own: the release of a double click's second
 	// press, which opens the row, is none.
-	f.rb = rowBuild{f: f, i: i, key: key, clicked: w.st.clicks > 0 && w.st.clickMods == 0 && w.st.pressRun <= 1, double: w.st.doubleClicks > 0}
+	f.rb = rowBuild{f: f, i: i, key: key, clicked: w.st.clicks > 0 && w.st.clickMods == 0 && w.st.pressRun <= 1, double: w.st.doubleClicks > 0, pressed: w.pressedHere()}
 	rb := &f.rb
 	if sel := s.cursor(); sel != nil && !f.isHeader(i) {
 		t := c.theme
@@ -757,7 +758,7 @@ func (f *listFrame) build(i int) *node {
 			w.Radius(r)
 		}
 		w.styleFn = func(w *node) {
-			if w.checked != 2 && w.Hovered() {
+			if w.checked != 2 && w.Hovered() && !w.c.rt.rowHoverHeld() {
 				w.bg = t.SurfaceHover
 			}
 		}

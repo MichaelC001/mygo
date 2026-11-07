@@ -487,6 +487,11 @@ type engine struct {
 	// wheeling are the elements of the scroll containers that the notches
 	// of a mouse wheel scroll smoothly (glideWheels).
 	wheeling []uint64
+	// rowHoverUntil is when rows show the pointer over them again after a
+	// scroll, and rowHoverFromX, Y where the pointer was as it began
+	// (holdRowHover).
+	rowHoverUntil                time.Time
+	rowHoverFromX, rowHoverFromY float32
 	// lastPress is the element of the press (id) and of the one before
 	// (prev), and how many of the backend's count of clicks were before
 	// the first on it.
@@ -773,6 +778,9 @@ func (rt *engine) runFrame() {
 	// the pointer is over now hovers rather than what it was over as the
 	// press began.
 	rt.rehover()
+	if rt.rowHoverHeld() {
+		rt.scheduleAt(rt.rowHoverUntil) // the frame that shows the hover again
+	}
 	rt.armTimer()
 	rt.showMenu()
 	rt.c.finish()
@@ -1119,6 +1127,14 @@ func (rt *engine) changed() {
 	rt.redraw, rt.repaintDue = false, time.Time{}
 	rt.host.requestFrame()
 }
+
+const (
+	// rowHoverHold is how long after scrolling stops rows show the pointer
+	// over them again, as Safari, Firefox and Chromium wait to update :hover.
+	rowHoverHold = 100 * time.Millisecond
+	// rowHoverMove is how far, in DIPs, the pointer moves to end the wait.
+	rowHoverMove = 4
+)
 
 // scheduleAt asks for a frame at t (After).
 func (rt *engine) scheduleAt(t time.Time) {

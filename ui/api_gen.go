@@ -6019,6 +6019,27 @@ func (_handle Element) RowDoubleClicked() bool {
 	return _node.RowDoubleClicked()
 }
 
+// RowPressed reports, while a row of a List or a Table builds, that the
+// row is being pressed with the pointer: a cell can show it heard the press
+// and leave the press to the row, which chooses, where Pressed would take
+// it. Dragged off the row, it is pressed no more.
+//
+//	ui.Table(c, &app.list, cols, len(app.rows), func(row, col int) {
+//		cell := ui.Box(c).FillWidth().Children(func() { ui.Text(c, app.rows[row][col]) })
+//		if cell.RowPressed() {
+//			cell.Opacity(0.8)
+//		}
+//	})
+func (_handle Element) RowPressed() bool {
+	_node := _handle.node()
+	if _node == nil {
+		return false
+	}
+	_ctx := _node.c
+	_ = _ctx
+	return _node.RowPressed()
+}
+
 // RowSpan makes the element span n rows of its grid, or, for a negative n,
 // every row from its start to the last the grid sets.
 func (_handle Element) RowSpan(n int) Element {
