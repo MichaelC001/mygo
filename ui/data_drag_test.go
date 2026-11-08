@@ -304,3 +304,41 @@ func TestNativeDestinationRejectsMismatchDisabledAndFailedData(t *testing.T) {
 		t.Fatal("failed provider acknowledged a drop")
 	}
 }
+
+// A list's rows with DragRowsData drag natively: their data goes out of
+// the window, to other apps, and the DragRows value to typed targets of
+// this process, as it does without it.
+func TestListDragRowsData(t *testing.T) {
+	names := []string{"a.txt", "b.txt"}
+	var s ListState
+	sel := -1
+	s.Selected = &sel
+	s.DragRows = func(rows []int) any { return []string{names[rows[0]]} }
+	s.DragRowsData = func(rows []int) transfer.Data { return transfer.TextData("/tmp/" + names[rows[0]]) }
+	var got any
+	source := coreNewTester(func(c *context) {
+		coreList(c, &s, len(names), func(i int) { coreText(c, names[i]).Padding(6) }).Fill()
+	}, 200, 200)
+	target := coreNewTester(func(c *context) {
+		e := coreBox(c).Size(100, 100)
+		if v, ok := coreDrop[[]string](e); ok {
+			got = v
+		}
+	}, 200, 200)
+	r, _ := source.Find("b.txt")
+	source.Press(r.X+5, r.Y+r.H/2)
+	source.Move(r.X+40, r.Y+r.H/2+30)
+	if source.h.dragOptions.Preview == nil {
+		t.Fatal("no native drag began")
+	}
+	text, _ := source.h.dragData.Read(transfer.Text)
+	if string(text) != "/tmp/b.txt" {
+		t.Errorf("the native data %q", text)
+	}
+	d := &platform.DataDragEvent{Offer: transfer.Offer{Formats: []transfer.Format{transfer.Text}, Operations: transfer.Copy}, Local: source.h.dragLocal}
+	target.send2(platform.SurfaceEvent{Kind: platform.DataDragOver, X: 5, Y: 5, Drag: d})
+	if !target.send2(platform.SurfaceEvent{Kind: platform.DataDrop, X: 5, Y: 5, Drag: d}) || !slices.Equal(got.([]string), []string{"b.txt"}) {
+		t.Fatalf("the value in this process: %v", got)
+	}
+	source.h.finishDataDrag(transfer.Result{Operation: d.Operation})
+}
