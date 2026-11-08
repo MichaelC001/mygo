@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/egoist/mygo/transfer"
 )
 
 // A List builds only the rows in view, and keeps its place by a row, its
@@ -124,6 +126,12 @@ type ListState struct {
 	// itself takes nothing and shows no place between the rows. Return nil
 	// for rows that do not drag. A list cannot both DragRows and Reorder.
 	DragRows func(rows []int) any
+	// DragRowsData, when set with DragRows, drags the rows natively too:
+	// out of the window, to other apps, as the data it returns for them
+	// (as files, transfer.FileData), copied (DragData's default); the
+	// value DragRows returns still going to the elements of this process
+	// taking it (Drop).
+	DragRowsData func(rows []int) transfer.Data
 	// RowShown, when set, returns how much of row i shows, 0 to 1: that
 	// part of the height it measures, its content clipped, so a row coming
 	// into the list or leaving it grows or shrinks in place, the rows
@@ -773,6 +781,9 @@ func (f *listFrame) build(i int) *node {
 	}
 	if (s.Reorder != nil || s.DragRows != nil) && !f.isHeader(i) {
 		w.dragFrom(func() any { return f.dragValue(i) })
+		if s.DragRows != nil && s.DragRowsData != nil {
+			w.DragDataFrom(func() transfer.Data { return s.DragRowsData(f.dragged(i)) })
+		}
 		if w.Dragging() {
 			// Where the row was, as it moves with the pointer.
 			w.Opacity(0.4)
