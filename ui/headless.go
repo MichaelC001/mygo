@@ -776,6 +776,13 @@ func (t *Tester) Move(x, y float32) {
 	t.send(platform.SurfaceEvent{Kind: platform.PointerMove, X: float64(x), Y: float64(y)})
 }
 
+// DraggedData returns the data of the native drag the window began, as
+// other apps would take it, while it goes on (DragData,
+// ListState.DragRowsData).
+func (t *Tester) DraggedData() (transfer.Data, bool) {
+	return t.h.dragData, t.h.dragging
+}
+
 // nativeDrag is the native drag the window began, as the system brings it
 // back over the window: its data offered, and with data the data itself,
 // as at the drop.
