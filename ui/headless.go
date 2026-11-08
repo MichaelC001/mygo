@@ -73,6 +73,7 @@ type headless struct {
 	last        *scene.Scene
 	dragData    transfer.Data
 	dragLocal   any
+	dragging    bool // a native drag this window began goes on
 	dragOptions transfer.DragOptions
 	// webViews are where the last frame showing web views showed them;
 	// tabbedInto the web view Tab gave the keyboard last, from its end
@@ -153,13 +154,13 @@ func (h *headless) writeClipboardData(d transfer.Data) {
 func (h *headless) clipboardFormats() []transfer.Format { return h.readClipboardData(nil).Formats() }
 
 func (h *headless) startDataDrag(d transfer.Data, local any, o transfer.DragOptions, x, y float32) error {
-	h.dragData, h.dragLocal, h.dragOptions = d.Snapshot(), local, o
+	h.dragData, h.dragLocal, h.dragOptions, h.dragging = d.Snapshot(), local, o, true
 	return nil
 }
 func (h *headless) cancelDataDrag() { h.finishDataDrag(transfer.Result{Canceled: true}) }
 func (h *headless) finishDataDrag(r transfer.Result) {
 	done := h.dragOptions.Done
-	h.dragData, h.dragLocal, h.dragOptions = transfer.Data{}, nil, transfer.DragOptions{}
+	h.dragData, h.dragLocal, h.dragOptions, h.dragging = transfer.Data{}, nil, transfer.DragOptions{}, false
 	if done != nil {
 		done(r)
 	}
@@ -722,14 +723,21 @@ func (t *Tester) Press(x, y float32) {
 	t.send(platform.SurfaceEvent{Kind: platform.PointerDown, X: float64(x), Y: float64(y)})
 }
 
-// Release releases the pointer at (x, y).
+// Release releases the pointer at (x, y): during a native drag the
+// window began, it drops it on the window, as the system would.
 func (t *Tester) Release(x, y float32) {
+	if t.dropNative(0, x, y) {
+		return
+	}
 	t.send(platform.SurfaceEvent{Kind: platform.PointerUp, X: float64(x), Y: float64(y)})
 }
 
 // ReleaseWith lets go of the primary button at (x, y) with modifiers held,
 // as a drop with Option or Ctrl held to copy is.
 func (t *Tester) ReleaseWith(mods Modifiers, x, y float32) {
+	if t.dropNative(mods, x, y) {
+		return
+	}
 	t.send(platform.SurfaceEvent{Kind: platform.PointerUp, X: float64(x), Y: float64(y), Mods: platform.Modifiers(mods)})
 }
 
@@ -756,9 +764,47 @@ func (t *Tester) webViewPress(x, y float32, button int, mods platform.Modifiers)
 	return true
 }
 
-// Move moves the pointer to (x, y).
+// Move moves the pointer to (x, y): during a native drag the window
+// began, the drag goes over the window, as the system brings it back.
 func (t *Tester) Move(x, y float32) {
+	if t.h.dragging {
+		// A native drag the window began: the system's, which comes back
+		// over the window as a drag over it.
+		t.send(platform.SurfaceEvent{Kind: platform.DataDragOver, X: float64(x), Y: float64(y), Drag: t.nativeDrag(false)})
+		return
+	}
 	t.send(platform.SurfaceEvent{Kind: platform.PointerMove, X: float64(x), Y: float64(y)})
+}
+
+// nativeDrag is the native drag the window began, as the system brings it
+// back over the window: its data offered, and with data the data itself,
+// as at the drop.
+func (t *Tester) nativeDrag(data bool) *platform.DataDragEvent {
+	h := t.h
+	ops := h.dragOptions.Operations
+	if ops == 0 {
+		ops = transfer.Copy // DragData's default
+	}
+	d := &platform.DataDragEvent{Offer: transfer.Offer{Formats: h.dragData.Formats(), Operations: ops}, Local: h.dragLocal}
+	if data {
+		d.Data = h.dragData
+	}
+	return d
+}
+
+// dropNative ends the native drag the window began at (x, y), with mods
+// held, dropping it on the window as the system would, and reports
+// whether it did.
+func (t *Tester) dropNative(mods Modifiers, x, y float32) bool {
+	if !t.h.dragging {
+		return false
+	}
+	t.send(platform.SurfaceEvent{Kind: platform.ModifiersChanged, Mods: platform.Modifiers(mods)})
+	d := t.nativeDrag(true)
+	t.send(platform.SurfaceEvent{Kind: platform.DataDrop, X: float64(x), Y: float64(y), Drag: d})
+	t.h.finishDataDrag(transfer.Result{Operation: d.Operation})
+	t.settle()
+	return true
 }
 
 // Scroll scrolls by dx, dy DIPs with the pointer at (x, y), as a touchpad
