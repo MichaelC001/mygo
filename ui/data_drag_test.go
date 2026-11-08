@@ -342,3 +342,35 @@ func TestListDragRowsData(t *testing.T) {
 	}
 	source.h.finishDataDrag(transfer.Result{Operation: d.Operation})
 }
+
+// A native drag a window began comes back over it as the system brings
+// it, in a Tester too: rows dragged natively drop on an element of the
+// same window taking their DragRows value.
+func TestNativeDragBackOverItsWindow(t *testing.T) {
+	names := []string{"a.txt", "b.txt"}
+	var s ListState
+	sel := -1
+	s.Selected = &sel
+	s.DragRows = func(rows []int) any { return []string{names[rows[0]]} }
+	s.DragRowsData = func(rows []int) transfer.Data { return transfer.TextData(names[rows[0]]) }
+	var got []string
+	tt := coreNewTester(func(c *context) {
+		coreColumn(c).Fill().Children(func() {
+			coreList(c, &s, len(names), func(i int) { coreText(c, names[i]).Padding(6) }).Height(100)
+			target := coreBox(c).Height(80).Label("Target")
+			if v, ok := coreDrop[[]string](target); ok {
+				got = v
+			}
+		})
+	}, 200, 200)
+	r, _ := tt.Find("a.txt")
+	to, _ := tt.Find("Target")
+	tt.Press(r.X+5, r.Y+r.H/2)
+	tt.Move(r.X+20, r.Y+r.H/2+10)
+	tt.Move(to.X+20, to.Y+20)
+	tt.Release(to.X+20, to.Y+20)
+	tt.Frame()
+	if !slices.Equal(got, []string{"a.txt"}) || tt.h.dragging {
+		t.Errorf("dropped %q, still dragging %v", got, tt.h.dragging)
+	}
+}
