@@ -2727,6 +2727,15 @@ either.
   alone, as Enter choosing a candidate: on macOS `keyDown:` sends no
   `KeyPressed` while there is marked text, as GTK's input method filters
   such keys on Linux and IMM32 makes them `VK_PROCESSKEY` on Windows.
+  The guarantee is these filters' (in browsers, `isComposing`): a key
+  that reaches the engine passed the input method, which may have left
+  it with the composition still marked (IBus in sync mode gives one up
+  with Escape and never empties the preedit), so the engine acts on
+  every key it gets. A `Tester`, which has no input method, keeps a key
+  pressed without Ctrl or Super from the content while the focus's
+  client has marked text (`Tester.composingKey`), as macOS does, and
+  leaves the composition be, so that `Compose` then `Key` shows what
+  users get.
   A composition an input method gives up, as with Escape, goes: the
   Microsoft Japanese IME sends `WM_IME_COMPOSITION` with neither
   `GCS_COMPSTR` nor `GCS_RESULTSTR` then, which empties the marked text
