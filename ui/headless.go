@@ -432,6 +432,9 @@ func (t *Tester) send(ev platform.SurfaceEvent) {
 	case platform.PointerMove, platform.PointerDown, platform.PointerUp:
 		ev.Pointer, ev.Pressure = platform.PointerKind(t.pointer), float64(t.pressure)
 	}
+	if ev.Kind == platform.PointerDown && ev.DoubleClickTime == 0 {
+		ev.DoubleClickTime = platform.DefaultDoubleClick.Time
+	}
 	if ev.Kind == platform.PointerDown && ev.Clicks == 0 {
 		// Counted as a backend counts.
 		ev.Clicks = t.clicks.Press(ev.Button, ev.X, ev.Y, uint32(t.now.UnixMilli()), platform.DefaultDoubleClick)
