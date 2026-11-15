@@ -293,7 +293,9 @@ func (rt *engine) richParams(t *Theme, width float32, spans []Span) text.Params 
 	style := text.Style{Family: t.Font, Size: t.FontSize, Lang: rt.lang}
 	if base, ok := smallestSpan(spans); ok {
 		style.Size = base.Size
-		if base.Font != "" {
+		// Only when every span sets its font too: a span leaving it to the
+		// theme keeps the theme's.
+		if !slices.ContainsFunc(spans, func(s Span) bool { return s.Font == "" }) {
 			style.Family = base.Font
 		}
 	}

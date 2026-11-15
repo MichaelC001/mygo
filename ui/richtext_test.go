@@ -222,6 +222,11 @@ func TestRichTextSmallerThanTheTheme(t *testing.T) {
 	if mixed != theme {
 		t.Errorf("with a span of the theme's size: %v high, the theme's %v", mixed, theme)
 	}
+	// A span leaving its font to the theme keeps the theme's font.
+	p := tt.rt.richParams(c.theme, 0, []Span{{Text: "a", Size: 9, Font: "Menlo"}, {Text: "b", Size: 12}})
+	if p.Style.Family != c.theme.Font {
+		t.Errorf("family %q, want the theme's %q", p.Style.Family, c.theme.Font)
+	}
 }
 
 // A span's color faded to nothing draws nothing, not the theme's text.
