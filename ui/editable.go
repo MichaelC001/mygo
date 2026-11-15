@@ -82,7 +82,11 @@ func coreEditableText(c *context, value *string) *node {
 	if start && !st.editing {
 		if row != nil && row.f != nil && row.f.s.Edit != nil {
 			// The list's app edits it: no input of the text's own.
-			row.f.s.Edit(ListEdit{Row: row.i, Clicked: clicked, At: st.at})
+			e := ListEdit{Row: row.i, Clicked: clicked}
+			if clicked {
+				e.At = st.at // a key asks at no point
+			}
+			row.f.s.Edit(e)
 			start = false
 		} else {
 			st.editing, st.fresh, st.draft = true, true, *value
