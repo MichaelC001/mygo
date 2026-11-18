@@ -142,6 +142,11 @@ type ListState struct {
 	// value DragRows returns still going to the elements of this process
 	// taking it (Drop).
 	DragRowsData func(rows []int) transfer.Data
+	// DragRowsPreview, when set with DragRowsData, is what the native drag
+	// of row, the row pressed, shows by the pointer: a part of it, as its
+	// icon, scaled, after a gap from the pointer; false for the row whole,
+	// where the press was.
+	DragRowsPreview func(row int) (DragPreview, bool)
 	// RowShown, when set, returns how much of row i shows, 0 to 1: that
 	// part of the height it measures, its content clipped, so a row coming
 	// into the list or leaving it grows or shrinks in place, the rows
@@ -887,6 +892,9 @@ func (f *listFrame) build(i int) *node {
 		w.dragFrom(func() any { return f.dragValue(i) })
 		if s.DragRows != nil && s.DragRowsData != nil {
 			w.DragDataFrom(func() transfer.Data { return s.DragRowsData(f.dragged(i)) })
+			if s.DragRowsPreview != nil {
+				w.st.dataSource.part = func() (DragPreview, bool) { return s.DragRowsPreview(i) }
+			}
 		}
 		if w.Dragging() {
 			// Where the row was, as it moves with the pointer.
