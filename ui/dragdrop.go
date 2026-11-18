@@ -178,6 +178,11 @@ func (rt *engine) dragMove(x, y float32) {
 			options := src.options
 			if options.Preview == nil {
 				options.Preview, options.Hotspot = rt.dataPreview(s)
+				if src.part != nil {
+					if p, ok := src.part(); ok {
+						options.Preview, options.Hotspot = rt.partPreview(p)
+					}
+				}
 			}
 			done := options.Done
 			options.Done = func(result transfer.Result) {

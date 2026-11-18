@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"image"
 	"slices"
 	"testing"
 
@@ -373,4 +374,37 @@ func TestNativeDragBackOverItsWindow(t *testing.T) {
 	if !slices.Equal(got, []string{"a.txt"}) || tt.h.dragging {
 		t.Errorf("dropped %q, still dragging %v", got, tt.h.dragging)
 	}
+}
+
+// DragRowsPreview shows a part of the row pressed by the pointer, scaled,
+// after a clear gap: the pointer at the preview's top-left.
+func TestListDragRowsPreview(t *testing.T) {
+	names := []string{"a.txt", "b.txt"}
+	var s ListState
+	sel := -1
+	s.Selected = &sel
+	s.DragRows = func(rows []int) any { return []string{names[rows[0]]} }
+	s.DragRowsData = func(rows []int) transfer.Data { return transfer.TextData(names[rows[0]]) }
+	asked := -1
+	s.DragRowsPreview = func(row int) (DragPreview, bool) {
+		asked = row
+		return DragPreview{Part: Rect{0, 0, 20, 20}, Scale: 0.5, Gap: Point{8, 6}}, true
+	}
+	tt := coreNewTester(func(c *context) {
+		coreList(c, &s, len(names), func(i int) { coreText(c, names[i]).Padding(6) }).Fill()
+	}, 200, 200)
+	r, _ := tt.Find("b.txt")
+	tt.Press(r.X+5, r.Y+r.H/2)
+	tt.Move(r.X+40, r.Y+r.H/2+30)
+	o := tt.h.dragOptions
+	if asked != 1 || o.Preview == nil {
+		t.Fatalf("asked for row %d, preview %v", asked, o.Preview)
+	}
+	if b := o.Preview.Bounds(); b.Dx() != 8+10 || b.Dy() != 6+10 || o.Hotspot != (image.Point{}) {
+		t.Errorf("preview %v, hotspot %v", b, o.Hotspot)
+	}
+	if _, _, _, a := o.Preview.At(2, 2).RGBA(); a != 0 {
+		t.Error("the gap is not clear")
+	}
+	tt.Key(0, KeyEscape)
 }

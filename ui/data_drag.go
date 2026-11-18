@@ -12,6 +12,19 @@ import (
 type dataSource struct {
 	data    func() transfer.Data
 	options transfer.DragOptions
+	// part, when set, is the part of the window the drag's preview shows
+	// (a list's DragRowsPreview), else the source element whole.
+	part func() (DragPreview, bool)
+}
+
+// DragPreview is what a native drag shows by the pointer: Part of the
+// window as it shows, in its DIPs, Scale as large (1 for zero), its
+// top-left Gap from the pointer, right and down, out of the way of what
+// the pointer is over.
+type DragPreview struct {
+	Part  Rect
+	Scale float32
+	Gap   Point
 }
 
 // DragData makes e a native drag source after a primary press moves a few
@@ -37,7 +50,7 @@ func (e *node) DragDataFrom(data func() transfer.Data, options ...transfer.DragO
 		o = options[0]
 	}
 	e.flags |= flagDraggable | flagHover
-	e.st.dataSource = &dataSource{data, o}
+	e.st.dataSource = &dataSource{data: data, options: o}
 	return e
 }
 
@@ -170,6 +183,38 @@ func (rt *engine) syncDropFormats() {
 
 // dataPreview snapshots the last scene, resampling the source's visible
 // bounds to the window's DIPs. No GPU readback or native API is needed.
+// partPreview is the preview p asks for: its part, scaled, after a
+// clear gap, the pointer at its top-left (a hotspot within the image, as
+// every system takes).
+func (rt *engine) partPreview(p DragPreview) (image.Image, image.Point) {
+	_, _, scale := rt.size()
+	z := rt.zoomFactor()
+	k := p.Scale
+	if k <= 0 {
+		k = 1
+	}
+	w, h := min(int(p.Part.W*z*k+0.5), 512), min(int(p.Part.H*z*k+0.5), 512)
+	if w <= 0 || h <= 0 {
+		return nil, image.Point{}
+	}
+	gx, gy := max(int(p.Gap.X*z+0.5), 0), max(int(p.Gap.Y*z+0.5), 0)
+	var renderer raster.Renderer
+	renderer.Render(&rt.scene)
+	m := &renderer.Image
+	img := image.NewRGBA(image.Rect(0, 0, gx+w, gy+h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			px, py := int((p.Part.X+float32(x)/(z*k))*scale), int((p.Part.Y+float32(y)/(z*k))*scale)
+			if px < 0 || py < 0 || px >= m.W || py >= m.H {
+				continue
+			}
+			i, j := (py*m.W+px)*4, ((gy+y)*(gx+w)+gx+x)*4
+			img.Pix[j], img.Pix[j+1], img.Pix[j+2], img.Pix[j+3] = m.Pix[i+2], m.Pix[i+1], m.Pix[i], m.Pix[i+3]
+		}
+	}
+	return img, image.Point{}
+}
+
 func (rt *engine) dataPreview(s *state) (image.Image, image.Point) {
 	_, _, scale := rt.size()
 	z := rt.zoomFactor()
