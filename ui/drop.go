@@ -38,6 +38,11 @@ func (rt *engine) dropTarget(x, y float32) *state {
 func (rt *engine) fileDrag(x, y float32) bool {
 	var over uint64
 	if x >= 0 && y >= 0 {
+		// The pointer is where the files are: the window gets no moves of
+		// it while another app drags them, and the element taking them
+		// reads where they are over it (PointerPosition), as a native
+		// drag's targets do (dataDragOver).
+		rt.pointerX, rt.pointerY = x, y
 		if s := rt.dropTarget(x, y); s != nil {
 			over = s.id
 		}
@@ -52,6 +57,7 @@ func (rt *engine) fileDrag(x, y float32) bool {
 // fileDrop drops files at (x, y), and reports whether an element took them.
 func (rt *engine) fileDrop(x, y float32, files []string) bool {
 	rt.fileDrag(-1, -1)
+	rt.pointerX, rt.pointerY = x, y // where they dropped, as fileDrag keeps it
 	s := rt.dropTarget(x, y)
 	if s == nil || len(files) == 0 {
 		return false

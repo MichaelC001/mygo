@@ -52,3 +52,24 @@ func (t *Tester) send2(ev platform.SurfaceEvent) bool {
 	t.settle()
 	return taken
 }
+
+// Files from another app dropped on an element tell it where they
+// dropped (PointerPosition), the window having had no moves of the
+// pointer while they were dragged.
+func TestDroppedFilesWhere(t *testing.T) {
+	var at Point
+	tt := coreNewTester(func(c *context) {
+		e := coreBox(c).Size(200, 200)
+		if len(e.DroppedFiles()) > 0 {
+			x, y, _ := e.PointerPosition()
+			at = Point{x, y}
+		}
+	}, 300, 300)
+	tt.Move(5, 5)
+	if !tt.DropFiles(120, 80, "/tmp/a.txt") {
+		t.Fatal("not taken")
+	}
+	if at != (Point{120, 80}) {
+		t.Errorf("dropped at %v, want (120, 80)", at)
+	}
+}
