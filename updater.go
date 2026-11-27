@@ -672,15 +672,44 @@ func openBundle(args []string) bool {
 }
 
 // cleanUpdateLeftovers removes what an update could not remove while the
-// previous version ran (Windows keeps running executables).
+// previous version ran (Windows keeps running executables). Only a build
+// with updates can own such entries — they are made by swapFiles during an
+// update — so a build without updates touches nothing: matching names
+// beside its executable belong to whoever made them. Even then only the
+// names swapFiles gives are removed, and not those of this process, which
+// may be updating.
 func cleanUpdateLeftovers() {
+	if packageUpdateFeed == "" || packageUpdateKey == "" {
+		return
+	}
 	if runtime.GOOS == "darwin" || startExe == "" {
 		return
 	}
 	olds, _ := filepath.Glob(filepath.Join(filepath.Dir(startExe), ".*.old-*"))
 	for _, p := range olds {
-		_ = os.RemoveAll(p)
+		if isUpdateLeftover(filepath.Base(p), os.Getpid()) {
+			_ = os.RemoveAll(p)
+		}
 	}
+}
+
+// isUpdateLeftover reports whether name is one that swapFiles gives an
+// entry it moves aside, .<name>.old-<pid>, of a process other than pid.
+func isUpdateLeftover(name string, pid int) bool {
+	i := strings.LastIndex(name, ".old-")
+	if i < 2 || name[0] != '.' {
+		return false
+	}
+	digits := name[i+len(".old-"):]
+	if digits == "" || len(digits) > 10 {
+		return false
+	}
+	for _, c := range digits {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return digits != strconv.Itoa(pid)
 }
 
 // httpGet fetches a URL over HTTPS (or plain HTTP from the loopback

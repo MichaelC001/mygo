@@ -745,3 +745,100 @@ func TestUpdateCheckRedirect(t *testing.T) {
 		t.Errorf("asked %d times", n)
 	}
 }
+
+func saveUpdateBuild() (feed, key, exe string) {
+	return packageUpdateFeed, packageUpdateKey, startExe
+}
+
+func restoreUpdateBuild(feed, key, exe string) {
+	packageUpdateFeed, packageUpdateKey, startExe = feed, key, exe
+}
+
+func TestCleanUpdateLeftoversKeepsLookAlikesOfABuildWithoutUpdates(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("darwin's updater leaves no entries of this shape to clean")
+	}
+	dir := t.TempDir()
+	foreign := filepath.Join(dir, ".notes.old-backup")
+	if err := os.WriteFile(foreign, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	folder := filepath.Join(dir, ".folder.old-1234", "nested")
+	if err := os.MkdirAll(folder, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(folder, "sentinel.txt"), []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	feed, key, exe := saveUpdateBuild()
+	defer restoreUpdateBuild(feed, key, exe)
+	packageUpdateFeed, packageUpdateKey, startExe = "", "", filepath.Join(dir, "app")
+	cleanUpdateLeftovers()
+	if _, err := os.Stat(foreign); err != nil {
+		t.Fatalf("the unrelated file beside the executable was removed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".folder.old-1234", "nested", "sentinel.txt")); err != nil {
+		t.Fatalf("the unrelated folder beside the executable was removed: %v", err)
+	}
+}
+
+func TestCleanUpdateLeftoversRemovesTheLeftoversOfABuildWithUpdates(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("darwin's updater leaves no entries of this shape to clean")
+	}
+	dir := t.TempDir()
+	write := func(name string) string {
+		p := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	gone := []string{
+		write(".notes.old-1234"),
+		filepath.Dir(write(filepath.Join(".lib.old-99", "nested", "sentinel.txt"))),
+	}
+	kept := []string{
+		write(".notes.old-backup"),
+		write(".notes.old-" + strconv.Itoa(os.Getpid())), // this process's own, mid-update
+		write("notes.old-1234"),
+		write(".notes.old-"),
+	}
+	feed, key, exe := saveUpdateBuild()
+	defer restoreUpdateBuild(feed, key, exe)
+	packageUpdateFeed, packageUpdateKey, startExe = "https://updates.example/feed", "key", filepath.Join(dir, "app")
+	cleanUpdateLeftovers()
+	for _, p := range gone {
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Errorf("the update leftover %s stayed: %v", filepath.Base(p), err)
+		}
+	}
+	for _, p := range kept {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("%s was removed: %v", filepath.Base(p), err)
+		}
+	}
+}
+
+func TestIsUpdateLeftover(t *testing.T) {
+	for name, want := range map[string]bool{
+		".app.exe.old-1234":  true,
+		".lib.so.old-7":      true,
+		".app.exe.old-42":    false, // the running process's
+		".notes.old-backup":  false,
+		".notes.old-12a":     false,
+		".notes.old-":        false,
+		".notes.old":         false,
+		"notes.old-1234":     false,
+		"..old-1234":         false,
+		".old-1234":          false,
+		".x.old-12345678901": false,
+	} {
+		if got := isUpdateLeftover(name, 42); got != want {
+			t.Errorf("isUpdateLeftover(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
